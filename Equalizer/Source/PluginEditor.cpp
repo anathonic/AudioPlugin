@@ -19,18 +19,30 @@ peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySli
 lowCutFreqSliderAttachment(audioProcessor.apvts, "LowCut Freq", lowCutFreqSlider),
 highCutFreqSliderAttachment(audioProcessor.apvts, "HighCut Freq", highCutFreqSlider),
 lowCutSlopeSliderAttachment(audioProcessor.apvts, "LowCut Slope", lowCutSlopeSlider),
-highCutSlopeSliderAttachment(audioProcessor.apvts, "HighCut Slope", highCutFreqSlider)
+highCutSlopeSliderAttachment(audioProcessor.apvts, "HighCut Slope", highCutSlopeSlider)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     for (auto* comp : getComps()){
         addAndMakeVisible(comp);
     }
+    const auto& params = audioProcessor.getParameters();
+    for( auto param : params ){
+        param->addListener(this);
+    }
+    
+    startTimerHz(60);
     setSize (600, 400);
 }
 
 EqualizerAudioProcessorEditor::~EqualizerAudioProcessorEditor()
 {
+    const auto &params = audioProcessor.getParameters();
+    for (auto param : params ){
+        param->removeListener(this);
+    }
+    
+    
 }
 
 //==============================================================================
@@ -38,7 +50,7 @@ void EqualizerAudioProcessorEditor::paint (juce::Graphics& g)
 {
     
     using namespace juce;
-    g.fillAll (Colour::fromRGB(245, 245, 245));
+    g.fillAll (Colours::white);
     getLookAndFeel().setColour (juce::Slider::thumbColourId, juce::Colours::black);
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
@@ -92,7 +104,7 @@ void EqualizerAudioProcessorEditor::paint (juce::Graphics& g)
     }
     g.setColour(Colour::fromRGB(34, 34, 34));
     g.drawRoundedRectangle(responseArea.toFloat(),4.f, 2.f);
-    g.setColour(Colours::orange);
+    g.setColour(Colours::black);
     g.strokePath(responseCurve, PathStrokeType(2.f));
     
     
@@ -129,7 +141,10 @@ void EqualizerAudioProcessorEditor::parameterValueChanged(int parametrIndex, flo
 
 void EqualizerAudioProcessorEditor::timerCallback(){
     if( parametersChanged.compareAndSetBool(false, true)){
-        
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+        repaint();
     }
 }
 
