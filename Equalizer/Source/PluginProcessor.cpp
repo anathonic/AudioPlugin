@@ -99,6 +99,7 @@ void EqualizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     spec.sampleRate = sampleRate;
     leftChain.prepare(spec);
     rightChain.prepare(spec);
+    updateFilters();
 
 }
 
@@ -228,18 +229,11 @@ void updateCoefficients(Coefficients &old, const Coefficients &replacements){
 }
 
 void EqualizerAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings){
-    auto lowCutCoefficients = makeLowCutFilter(chainSettings, getSampleRate());
+    auto cutCoefficients = makeLowCutFilter(chainSettings, getSampleRate());
         auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
         auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-        updateCutFilter(leftLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
-        updateCutFilter(rightLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
-}
-
-void EqualizerAudioProcessor::updateFilters(){
-    auto chainSettings = getChainSettings(apvts);
-    updateLowCutFilters(chainSettings);
-    updateHighCutFilters(chainSettings);
-    updatePeakFilter(chainSettings);
+        updateCutFilter(leftLowCut, cutCoefficients, chainSettings.lowCutSlope);
+        updateCutFilter(rightLowCut, cutCoefficients, chainSettings.lowCutSlope);
 }
 
 void EqualizerAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings){
@@ -250,6 +244,12 @@ void EqualizerAudioProcessor::updateHighCutFilters(const ChainSettings &chainSet
         updateCutFilter(rightHighCut, highCutCoefficients, chainSettings.highCutSlope);
 }
 
+void EqualizerAudioProcessor::updateFilters(){
+    auto chainSettings = getChainSettings(apvts);
+    updateLowCutFilters(chainSettings);
+    updatePeakFilter(chainSettings);
+    updateHighCutFilters(chainSettings);
+}
 juce::AudioProcessorValueTreeState::ParameterLayout EqualizerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -290,12 +290,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout EqualizerAudioProcessor::cre
     
     layout.add(std::make_unique<juce::AudioParameterChoice>("LowCut Slope", "LowCut Slope", stringArray, 0));
     layout.add(std::make_unique<juce::AudioParameterChoice>("HighCut Slope", "HighCut Slope", stringArray, 0));
-    
-    layout.add(std::make_unique<juce::AudioParameterBool>("LowCut Bypassed", "LowCut Bypassed", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("Peak Bypassed", "Peak Bypassed", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("HighCut Bypassed", "HighCut Bypassed", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("Analyzer Enabled", "Analyzer Enabled", true));
-    
     return layout;
 }
 //==============================================================================
