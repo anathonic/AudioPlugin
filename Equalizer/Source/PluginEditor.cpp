@@ -9,6 +9,125 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+void LookAndFeel::drawRotarySlider(juce::Graphics & g,
+                                    int x,
+                                    int y,
+                                    int width,
+                                    int height,
+                                    float sliderPos,
+                                    float rotaryStartAngle,
+                                    float rotaryEndAngle,
+                                    juce::Slider & slider)
+ {
+        auto fill = slider.findColour (juce::Slider::rotarySliderFillColourId);
+        auto bounds = juce::Rectangle<float> (x, y, width, height).reduced (2.0f);
+        auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f;
+        auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        auto lineW = radius * 0.085f;
+        auto arcRadius = radius - lineW * 1.6f;
+
+        juce::Path backgroundArc;
+        backgroundArc.addCentredArc (bounds.getCentreX(),
+                                     bounds.getCentreY(),
+                                     arcRadius,
+                                     arcRadius,
+                                     0.0f,
+                                     rotaryStartAngle,
+                                     rotaryEndAngle,
+                                     true);
+
+        g.setColour (juce::Colour::fromRGB(105, 105, 105));
+        g.strokePath (backgroundArc, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        juce::Path valueArc;
+        valueArc.addCentredArc (bounds.getCentreX(),
+                                bounds.getCentreY(),
+                                arcRadius,
+                                arcRadius,
+                                0.0f,
+                                rotaryStartAngle,
+                                toAngle,
+                                true);
+
+        g.setColour (fill);
+        g.strokePath (valueArc, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        juce::Path stick;
+        auto stickWidth = lineW * 2.0f;
+
+        stick.addRectangle (-stickWidth / 2, -stickWidth / 2, stickWidth, radius + lineW);
+
+        g.setColour (juce::Colour::fromRGB(211, 211, 211));
+        g.fillPath (stick, juce::AffineTransform::rotation (toAngle + 3.12f).translated (bounds.getCentre()));
+
+        g.fillEllipse (bounds.reduced (radius * 0.25));
+    
+    if(auto *rswl = dynamic_cast<RotarySliderWithLabels*>(&slider)){
+        auto center = bounds.getCentre();
+        juce::Path p;
+        juce::Rectangle<float> r;
+        r.setLeft(center.getX()-2);
+        r.setRight(center.getX()+2);
+        r.setTop(bounds.getY());
+        r.setBottom(center.getY()-rswl->getTextHeight()*1.5);
+        p.addRoundedRectangle(r,2.f);
+        jassert(rotaryStartAngle < rotaryEndAngle);
+        auto sliderAngRad = juce::jmap(sliderPos, 0.f, 1.f, rotaryStartAngle, rotaryEndAngle);
+        p.applyTransform(juce::AffineTransform().rotated(sliderAngRad,center.getX(), center.getY()));
+        g.fillPath(p);
+        g.setFont(rswl->getTextHeight());
+        auto text = rswl->getDisplayString();
+        auto strWidth = g.getCurrentFont().getStringWidth(text);
+        r.setSize(strWidth + 4, rswl->getTextHeight() +2 );
+        r.setCentre(bounds.getCentre());
+        g.setColour (juce::Colour::fromRGB(211, 211, 211));
+        g.fillRoundedRectangle(r,10);
+        g.setColour(juce::Colours::black);
+        g.drawFittedText(text, r.toNearestInt(), juce::Justification::centred, 1);
+    }
+ }
+void RotarySliderWithLabels::paint(juce::Graphics &g)
+ {
+     using namespace juce;
+
+     auto startAng = degreesToRadians(180.f + 45.f);
+     auto endAng = degreesToRadians(180.f - 45.f) + MathConstants<float>::twoPi;
+
+     auto range = getRange();
+
+     auto sliderBounds = getSliderBounds();
+    
+     g.setColour(Colours::red);
+    g.drawRect(getLocalBounds());
+    g.drawRect(sliderBounds);
+
+     getLookAndFeel().drawRotarySlider(g,
+                                       sliderBounds.getX(),
+                                       sliderBounds.getY(),
+                                       sliderBounds.getWidth(),
+                                       sliderBounds.getHeight(),
+                                       jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0),
+                                       startAng,
+                                       endAng,
+                                       *this);
+ }
+
+ juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
+ {
+     auto bounds = getLocalBounds();
+     auto size = juce::jmin(bounds.getWidth(), bounds.getHeight());
+     size -= getTextHeight() * 2;
+     juce::Rectangle<int> r;
+     r.setSize(size, size);
+     r.setCentre(bounds.getCentreX(), 0);
+     r.setY(2);
+     return r;
+ }
+
+juce::String RotarySliderWithLabels::getDisplayString() const {
+    return juce::String(getValue());
+}
+
 
 ResponseCurveComponent::ResponseCurveComponent(EqualizerAudioProcessor& p) : audioProcessor(p){
     const auto& params = audioProcessor.getParameters();
@@ -34,6 +153,7 @@ void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float new
 void ResponseCurveComponent::timerCallback(){
     if( parametersChanged.compareAndSetBool(false, true) )
     {
+        
         auto chainSettings = getChainSettings(audioProcessor.apvts);
         auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
         updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
@@ -51,7 +171,6 @@ void ResponseCurveComponent::timerCallback(){
         
         using namespace juce;
         g.fillAll (Colours::white);
-        getLookAndFeel().setColour (juce::Slider::thumbColourId, juce::Colours::black);
         auto responseArea = getLocalBounds();
         auto w = responseArea.getWidth();
         

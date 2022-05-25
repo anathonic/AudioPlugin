@@ -17,22 +17,22 @@ struct LookAndFeel : juce::LookAndFeel_V4{
                                     float sliderPosProportional,
                                     float rotaryStartAngle,
                                     float rotaryEndAngle,
-                         juce::Slider&) override {}
+                                    juce::Slider&) override;
 };
 
-struct RotarySliderWIthLabels: juce::Slider {
-    RotarySliderWIthLabels(juce::RangedAudioParameter &rap, const juce::String &unitSuffix) :
+struct RotarySliderWithLabels: juce::Slider {
+    RotarySliderWithLabels(juce::RangedAudioParameter &rap, const juce::String &unitSuffix) :
     juce::Slider(juce::Slider::SliderStyle::RotaryVerticalDrag,juce::Slider::TextEntryBoxPosition::NoTextBox),
     param(&rap),
     suffix(unitSuffix)
     {
         setLookAndFeel(&lnf);
     }
-    ~RotarySliderWIthLabels()
+    ~RotarySliderWithLabels()
     {
         setLookAndFeel(nullptr);
     }
-    void paint(juce::Graphics& g) override {}
+    void paint(juce::Graphics& g) override;
     juce::Rectangle<int> getSliderBounds() const;
     int getTextHeight() const { return 14; }
     juce::String getDisplayString() const;
@@ -72,7 +72,7 @@ public:
     void resized() override;
 private:
     EqualizerAudioProcessor& audioProcessor;
-    RotarySliderWIthLabels peakFreqSlider,
+    RotarySliderWithLabels peakFreqSlider,
     peakGainSlider,
     peakQualitySlider,
     lowCutFreqSlider,
