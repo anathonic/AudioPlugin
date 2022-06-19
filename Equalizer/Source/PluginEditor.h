@@ -63,12 +63,17 @@ juce::Timer
     
     void paint(juce::Graphics &g) override;
     
+    void resized() override;
+    
 private:
     EqualizerAudioProcessor& audioProcessor;
     juce::Atomic<bool> parametersChanged { false };
     
     MonoChain monoChain;
     void updateChain();
+    juce::Image background;
+    juce::Rectangle<int> getRenderArea();
+    juce::Rectangle<int> getAnalysisArea();
 };
 
 class EqualizerAudioProcessorEditor  : public juce::AudioProcessorEditor{
