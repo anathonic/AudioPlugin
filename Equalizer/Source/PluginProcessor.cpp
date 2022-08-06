@@ -100,6 +100,13 @@ void EqualizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     leftChain.prepare(spec);
     rightChain.prepare(spec);
     updateFilters();
+    leftChannelFifo.prepare(samplesPerBlock);
+    rightChannelFifo.prepare(samplesPerBlock);
+    osc.initialise([](float x) { return std::sin(x); });
+
+      spec.numChannels = getTotalNumOutputChannels();
+      osc.prepare(spec);
+      osc.setFrequency(440);
 
 }
 
@@ -155,6 +162,8 @@ void EqualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+    leftChannelFifo.update(buffer);
+    rightChannelFifo.update(buffer);
     
     
 }
